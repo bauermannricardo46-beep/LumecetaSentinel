@@ -46,6 +46,25 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Apply Lumeceta app icon
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick librsvg2-bin
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_foreground.xml
+          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
+          rsvg-convert -w 48 -h 48 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          rsvg-convert -w 72 -h 72 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          rsvg-convert -w 96 -h 96 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          rsvg-convert -w 144 -h 144 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          rsvg-convert -w 192 -h 192 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
       - name: Sync web assets
         run: npx cap sync android
 
