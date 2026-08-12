@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#09070f" />
+  <meta name="description" content="Lumeceta Sentinel – Investment Intelligence Dashboard" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◈</text></svg>">
+  <title>Lumeceta Sentinel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">◈</span><span>LUMECETA</span></div>
+      <div class="brand-sub">SENTINEL</div>
+      <nav>
+        <button class="nav-item active" data-view="overview">⌂ <span>Overview</span></button>
+        <button class="nav-item" data-view="portfolio">◫ <span>Portfolio</span></button>
+        <button class="nav-item" data-view="watchlist">◉ <span>Watchlist</span></button>
+        <button class="nav-item" data-view="signals">⌁ <span>Signals</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="connection"><span class="status-dot"></span><span>Local demo mode</span></div>
+        <div class="version">v0.1.0</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><div class="eyebrow">INVESTMENT INTELLIGENCE</div><h1 id="page-title">Overview</h1></div>
+        <div class="top-actions"><button id="refresh" class="icon-btn" title="Refresh">↻</button><div class="avatar">RS</div></div>
+      </header>
+
+      <section id="view-overview" class="view active-view">
+        <div class="hero-card card">
+          <div><div class="muted">TOTAL PORTFOLIO VALUE</div><div class="hero-value" id="portfolio-value">€1,247.83</div><div class="positive" id="portfolio-change">+€38.42 <span>(+3.18%)</span></div></div>
+          <div class="hero-orbit"><span>◈</span></div>
+        </div>
+        <div class="metrics-grid">
+          <article class="card metric"><span class="muted">INVESTED</span><strong>€1,180.00</strong><span class="muted">94.6% allocation</span></article>
+          <article class="card metric"><span class="muted">AVAILABLE CASH</span><strong>€67.83</strong><span class="muted">5.4% allocation</span></article>
+          <article class="card metric"><span class="muted">TODAY</span><strong class="positive">+€12.17</strong><span class="muted">+0.98%</span></article>
+          <article class="card metric"><span class="muted">RISK SCORE</span><strong>42<span class="small">/100</span></strong><span class="risk-label">MODERATE</span></article>
+        </div>
+        <div class="two-col">
+          <section class="card chart-card"><div class="section-head"><div><div class="muted">PERFORMANCE</div><h2>Portfolio growth</h2></div><span class="pill">30D</span></div><div class="chart-wrap"><svg viewBox="0 0 800 280" preserveAspectRatio="none" aria-label="Portfolio performance chart"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#9b6cff" stop-opacity=".30"/><stop offset="1" stop-color="#9b6cff" stop-opacity="0"/></linearGradient></defs><path class="area" d="M0 232 C70 224 75 215 135 221 S210 190 260 198 S320 174 365 184 S420 145 470 158 S520 127 565 139 S625 104 675 116 S735 75 800 42 V280 H0 Z"/><path class="line" d="M0 232 C70 224 75 215 135 221 S210 190 260 198 S320 174 365 184 S420 145 470 158 S520 127 565 139 S625 104 675 116 S735 75 800 42"/></svg><div class="chart-labels"><span>30 days ago</span><span>Today</span></div></div></section>
+          <section class="card"><div class="section-head"><div><div class="muted">ALLOCATION</div><h2>Holdings</h2></div></div><div class="allocation"><div class="donut"><span>4<br><small>ASSETS</small></span></div><div class="legend"><div><i class="dot d1"></i>Global ETF <b>48%</b></div><div><i class="dot d2"></i>Tech ETF <b>27%</b></div><div><i class="dot d3"></i>Bitcoin <b>15%</b></div><div><i class="dot d4"></i>Cash <b>10%</b></div></div></div></section>
+        </div>
+        <section class="card"><div class="section-head"><div><div class="muted">SENTINEL</div><h2>Market signals</h2></div><button class="text-btn" data-view-target="signals">View all →</button></div><div class="signal-row"><div class="signal-icon positive-bg">↗</div><div><strong>Global ETF momentum</strong><p>Trend remains constructive across the current timeframe.</p></div><span class="signal-score positive">82</span></div><div class="signal-row"><div class="signal-icon neutral-bg">≈</div><div><strong>Tech concentration</strong><p>Exposure is elevated but remains within your demo risk band.</p></div><span class="signal-score">54</span></div></section>
+      </section>
+
+      <section id="view-portfolio" class="view"><section class="card"><div class="section-head"><div><div class="muted">POSITIONS</div><h2>Your portfolio</h2></div></div><div class="table"><div class="table-head"><span>Asset</span><span>Value</span><span>24h</span><span>Weight</span></div><div class="table-row"><span><b>Global ETF</b><small>ETF</small></span><span>€566.40</span><span class="positive">+1.42%</span><span>48%</span></div><div class="table-row"><span><b>Tech ETF</b><small>ETF</small></span><span>€318.60</span><span class="positive">+0.81%</span><span>27%</span></div><div class="table-row"><span><b>Bitcoin</b><small>Crypto</small></span><span>€177.00</span><span class="negative">−0.36%</span><span>15%</span></div><div class="table-row"><span><b>Cash</b><small>EUR</small></span><span>€117.83</span><span>—</span><span>10%</span></div></div></section></section>
+      <section id="view-watchlist" class="view"><section class="card"><div class="section-head"><div><div class="muted">WATCHLIST</div><h2>Tracked assets</h2></div><button class="primary-btn">+ Add asset</button></div><div class="watch-grid"><div class="watch-item"><span class="ticker">VWCE</span><strong>Vanguard FTSE All-World</strong><span class="positive">+1.12%</span></div><div class="watch-item"><span class="ticker">NVDA</span><strong>NVIDIA</strong><span class="positive">+2.48%</span></div><div class="watch-item"><span class="ticker">BTC</span><strong>Bitcoin</strong><span class="negative">−0.36%</span></div></div></section></section>
+      <section id="view-signals" class="view"><section class="card"><div class="section-head"><div><div class="muted">SENTINEL ENGINE</div><h2>Signals</h2></div><span class="pill live">● LIVE</span></div><div class="signal-detail"><span class="signal-score big positive">82</span><div><h3>Constructive momentum</h3><p>Current demo data shows positive broad-market momentum with moderate portfolio risk.</p></div></div><div class="signal-detail"><span class="signal-score big">54</span><div><h3>Concentration watch</h3><p>Technology exposure is worth monitoring as a portfolio risk factor.</p></div></div></section></section>
+    </main>
+  </div>
+  <div id="toast" class="toast">Refreshed ✓</div>
+  <script src="app.js"></script>
+</body>
+</html>
