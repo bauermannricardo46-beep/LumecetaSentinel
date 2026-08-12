@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#09070f" />
   <meta name="description" content="Lumeceta Sentinel – Investment Intelligence Dashboard" />
   <link rel="manifest" href="manifest.webmanifest" />
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="ranking.css" />
   <link rel="stylesheet" href="asset-detail.css" />
   <link rel="stylesheet" href="entry-analysis.css" />
+  <link rel="stylesheet" href="mobile-responsive.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -28,7 +29,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="connection"><span class="status-dot"></span><span id="connection-label">Not connected</span></div>
-        <div class="version">v0.5.0 · <span id="account-environment">Trading 212</span></div>
+        <div class="version">v0.5.1 · <span id="account-environment">Trading 212</span></div>
       </div>
     </aside>
     <main class="main">
@@ -55,6 +56,7 @@
   <div id="toast" class="toast">Updated ✓</div>
   <script src="mobile-api.js"></script>
   <script src="app.js"></script>
+  <script src="mobile-nav.js"></script>
   <script src="analytics-client.js"></script>
   <script src="settings.js"></script>
   <script src="features.js"></script>
