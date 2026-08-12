@@ -1,6 +1,6 @@
 (() => {
   const KEY = 'lumeceta.apiBase';
-  const isCapacitor = location.protocol === 'capacitor:';
+  const isCapacitor = location.protocol === 'capacitor:' || (location.hostname === 'localhost' && !location.port);
   const defaultBase = isCapacitor ? 'http://10.0.2.2:8787/api' : '/api';
   const normalize = value => String(value || '').trim().replace(/\/$/, '');
   const stored = localStorage.getItem(KEY);
