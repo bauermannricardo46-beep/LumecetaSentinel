@@ -1,0 +1,13 @@
+{
+  "name": "lumeceta-sentinel-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local backend bridge for Lumeceta Sentinel and Trading 212",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
