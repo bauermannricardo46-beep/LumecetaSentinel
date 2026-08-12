@@ -1,0 +1,13 @@
+{
+  "name": "lumeceta-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lumeceta Sentinel investment intelligence dashboard with a local Trading 212 read-only bridge",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
