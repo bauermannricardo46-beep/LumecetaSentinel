@@ -20,10 +20,12 @@
         const view=btn.dataset.mobileView;
         if(typeof window.showLumecetaView==='function') window.showLumecetaView(view);
         else location.hash=view;
+        setActive(view);
       });
     });
 
     window.addEventListener('lumeceta:viewchange',e=>setActive(e.detail?.view));
+    window.addEventListener('hashchange',()=>setActive(location.hash.slice(1)||'overview'));
     setActive(location.hash.slice(1)||'overview');
   }
 
