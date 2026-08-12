@@ -1,6 +1,6 @@
 {
   "name": "lumeceta-sentinel",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Lumeceta Sentinel investment intelligence dashboard with Trading 212 read-only bridge and Android build",
   "main": "server/server.js",
@@ -17,6 +17,7 @@
     "@capacitor/core": "8.4.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.4.2"
+    "@capacitor/cli": "8.4.2",
+    "typescript": "^5.9.3"
   }
 }
