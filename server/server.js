@@ -6,7 +6,7 @@ const { createAnalyticsService } = require('./analytics');
 
 const PORT = Number(process.env.PORT || 8787);
 const ROOT = path.resolve(__dirname, '..');
-const state = { apiKey:'', apiSecret:'', environment:'live', connectedAt:null, lastDashboard:null };
+const state = { apiKey:'', apiSecret:'', environment:'live', connectedAt:null, lastDashboard:null, instrumentCache:null, instrumentCacheAt:0, watchCache:new Map() };
 
 function sendJson(res,status,body){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'GET,POST,OPTIONS'});res.end(JSON.stringify(body));}
 function readBody(req){return new Promise((resolve,reject)=>{let data='';req.on('data',chunk=>{data+=chunk;if(data.length>32000)req.destroy();});req.on('end',()=>{try{resolve(data?JSON.parse(data):{});}catch{reject(new Error('Invalid JSON'));}});req.on('error',reject);});}
@@ -30,6 +30,46 @@ async function getDashboard(){
   return{connected:true,environment:state.environment,account:{id:summary?.id??null,currency:summary?.currency??null},cash:cashObject,investments,positions:normalized,summary:{portfolioValue,invested,cash,realizedPnl,unrealizedPnl,totalPnl:realizedPnl+unrealizedPnl},fetchedAt:new Date().toISOString(),stale:false};
 }
 
+async function yahooChart(symbol){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d&events=div%7Csplits&includeAdjustedClose=true`;
+  const response=await fetch(url,{headers:{Accept:'application/json','User-Agent':'LumecetaSentinel/1.0'}});
+  if(!response.ok) throw new Error(`Market data HTTP ${response.status}`);
+  const json=await response.json(), result=json?.chart?.result?.[0]; if(!result) throw new Error('No market data');
+  const ts=result.timestamp||[], closes=result.indicators?.quote?.[0]?.close||[], rows=[];
+  for(let i=0;i<ts.length;i++){const close=number(closes[i]);if(close>0)rows.push({date:new Date(ts[i]*1000).toISOString().slice(0,10),close});}
+  return rows;
+}
+function yahooSymbol(ticker){const raw=String(ticker||'').replace(/_EQ$/,'');if(/^BTC(?:_USD)?$/.test(raw))return 'BTC-USD';if(/^ETH(?:_USD)?$/.test(raw))return 'ETH-USD';const m=raw.match(/^(.*)_([A-Z]{2})$/);if(!m)return raw;const suffix={US:'',DE:'.DE',UK:'.L',FR:'.PA',NL:'.AS',IT:'.MI',ES:'.MC',CH:'.SW',JP:'.T',HK:'.HK',AU:'.AX',CA:'.TO',SE:'.ST',DK:'.CO',NO:'.OL',FI:'.HE',BE:'.BR',AT:'.VI',IE:'.IR'}[m[2]];return suffix===undefined?m[1]:`${m[1]}${suffix}`;}
+function pctReturn(rows,days){if(rows.length<2)return 0;const a=rows[Math.max(0,rows.length-1-days)].close,b=rows[rows.length-1].close;return a?b/a-1:0;}
+function stddev(values){if(values.length<2)return 0;const mean=values.reduce((a,b)=>a+b,0)/values.length;return Math.sqrt(values.reduce((s,v)=>s+(v-mean)**2,0)/(values.length-1));}
+function maxDrawdown(rows){let peak=0,dd=0;for(const r of rows){peak=Math.max(peak,r.close);if(peak)dd=Math.min(dd,r.close/peak-1);}return dd;}
+async function getInstrumentAvailability(){
+  if(!state.apiKey||!state.apiSecret)return new Map();
+  if(state.instrumentCache&&Date.now()-state.instrumentCacheAt<30*60*1000)return state.instrumentCache;
+  try{
+    const data=await t212('/equity/metadata/instruments'), items=Array.isArray(data)?data:(data?.items||[]), map=new Map();
+    for(const i of items){if(i?.ticker)map.set(String(i.ticker).toUpperCase(),i);}
+    state.instrumentCache=map;state.instrumentCacheAt=Date.now();return map;
+  }catch(_){return state.instrumentCache||new Map();}
+}
+async function getWatchlist(symbols,force=false){
+  const clean=[...new Set(symbols.map(s=>String(s).trim().toUpperCase()).filter(Boolean))].slice(0,30);
+  const key=`${state.environment}:${clean.join(',')}`;const cached=state.watchCache.get(key);
+  if(!force&&cached&&Date.now()-cached.at<2*60*1000)return cached.data;
+  const instruments=await getInstrumentAvailability();
+  const items=await Promise.all(clean.map(async ticker=>{
+    const instrument=instruments.get(ticker)||instruments.get(ticker.replace(/_EQ$/,''));
+    try{
+      const rows=await yahooChart(yahooSymbol(ticker));
+      if(!rows.length)return{ticker,name:instrument?.name||ticker,missing:true,availableInTrading212:Boolean(instrument)};
+      const closes=rows.slice(1).map((r,i)=>r.close/rows[i].close-1).filter(Number.isFinite), vol=stddev(closes)*Math.sqrt(252), r7=pctReturn(rows,7), r30=pctReturn(rows,30), r252=pctReturn(rows,252), momentum=.5*r30+.3*r7+.2*r252;
+      const risk=Math.round(Math.min(100,Math.max(0,vol/.55*65+Math.abs(maxDrawdown(rows))/.35*35))), momentumScore=Math.round(Math.min(100,Math.max(0,50+momentum*120))), score=Math.round((momentumScore+(100-risk))/2);
+      return{ticker,name:instrument?.name||ticker,isin:instrument?.isin||null,price:rows.at(-1).close,dayChange:pctReturn(rows,1)*100,returns:{r7,r30,r252},risk,momentum:momentumScore,score,availableInTrading212:Boolean(instrument),currency:instrument?.currency||null};
+    }catch(_){return{ticker,name:instrument?.name||ticker,missing:true,availableInTrading212:Boolean(instrument)};}
+  }));
+  const data={generatedAt:new Date().toISOString(),items};state.watchCache.set(key,{at:Date.now(),data});return data;
+}
+
 const analytics=createAnalyticsService({t212});
 
 async function handle(req,res){
@@ -39,31 +79,24 @@ async function handle(req,res){
   if(url.pathname==='/api/connect'&&req.method==='POST'){
     try{const body=await readBody(req),apiKey=String(body.apiKey||'').trim(),apiSecret=String(body.apiSecret||'').trim(),environment=body.environment==='demo'?'demo':'live';
       if(!apiKey||!apiSecret)return sendJson(res,400,{error:'API Key und API Secret sind erforderlich.'});
-      state.apiKey=apiKey;state.apiSecret=apiSecret;state.environment=environment;
-      try{
-        const dashboard=await getDashboard();
-        state.connectedAt=new Date().toISOString();state.lastDashboard=dashboard;
-        return sendJson(res,200,{connected:true,environment,account:dashboard.account,summary:dashboard.summary,positions:dashboard.positions.length,fetchedAt:dashboard.fetchedAt,dashboard});
-      }catch(error){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
+      state.apiKey=apiKey;state.apiSecret=apiSecret;state.environment=environment;state.instrumentCache=null;state.watchCache.clear();
+      try{const dashboard=await getDashboard();state.connectedAt=new Date().toISOString();state.lastDashboard=dashboard;return sendJson(res,200,{connected:true,environment,account:dashboard.account,summary:dashboard.summary,positions:dashboard.positions.length,fetchedAt:dashboard.fetchedAt,dashboard});}
+      catch(error){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
     }catch(error){return sendJson(res,400,{error:error.message});}
   }
   if(url.pathname==='/api/dashboard'&&req.method==='GET'){
-    try{
-      const dashboard=await getDashboard();state.lastDashboard=dashboard;return sendJson(res,200,dashboard);
-    }catch(error){
-      if(error.status===429&&state.lastDashboard)return sendJson(res,200,{...state.lastDashboard,stale:true,warning:'Trading 212 rate limit reached; showing the last confirmed live snapshot.'});
-      return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});
-    }
+    try{const dashboard=await getDashboard();state.lastDashboard=dashboard;return sendJson(res,200,dashboard);}
+    catch(error){if(error.status===429&&state.lastDashboard)return sendJson(res,200,{...state.lastDashboard,stale:true,warning:'Trading 212 rate limit reached; showing the last confirmed live snapshot.'});return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
   }
   if(url.pathname==='/api/analytics'&&req.method==='GET'){
-    try{
-      const dashboard=state.lastDashboard||await getDashboard();
-      state.lastDashboard=dashboard;
-      const data=await analytics.get(dashboard.positions,url.searchParams.get('force')==='1');
-      return sendJson(res,200,{connected:true,...data});
-    }catch(error){return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
+    try{const dashboard=state.lastDashboard||await getDashboard();state.lastDashboard=dashboard;const data=await analytics.get(dashboard.positions,url.searchParams.get('force')==='1');return sendJson(res,200,{connected:true,...data});}
+    catch(error){return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
   }
-  if(url.pathname==='/api/disconnect'&&req.method==='POST'){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;return sendJson(res,200,{connected:false});}
+  if(url.pathname==='/api/watchlist'&&req.method==='GET'){
+    try{const symbols=String(url.searchParams.get('symbols')||'').split(',');if(!symbols.filter(Boolean).length)return sendJson(res,400,{error:'Mindestens ein Ticker ist erforderlich.'});return sendJson(res,200,await getWatchlist(symbols,url.searchParams.get('force')==='1'));}
+    catch(error){return sendJson(res,error.status||502,{error:error.message,trading212Status:error.status||null});}
+  }
+  if(url.pathname==='/api/disconnect'&&req.method==='POST'){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;state.instrumentCache=null;state.watchCache.clear();return sendJson(res,200,{connected:false});}
   return serveStatic(url.pathname,res);
 }
 
