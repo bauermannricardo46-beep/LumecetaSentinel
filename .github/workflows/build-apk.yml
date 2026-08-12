@@ -46,27 +46,49 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Apply Lumeceta app icon
+      - name: Sync web assets
+        run: npx cap sync android
+
+      - name: Apply Lumeceta launcher icon
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq imagemagick librsvg2-bin
-          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_foreground.xml
-          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
-          rsvg-convert -w 48 -h 48 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          rsvg-convert -w 72 -h 72 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          rsvg-convert -w 96 -h 96 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          rsvg-convert -w 144 -h 144 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          rsvg-convert -w 192 -h 192 assets/lumeceta-logo.svg -o android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-      - name: Sync web assets
-        run: npx cap sync android
+          RES="android/app/src/main/res"
+          mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi" "$RES/mipmap-anydpi-v26" "$RES/drawable"
+
+          # Remove Capacitor's generated launcher/adaptive icon resources so Android
+          # cannot fall back to the default Capacitor logo.
+          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher.xml
+          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_round.xml
+          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_foreground.xml
+          rm -f "$RES"/mipmap-*/ic_launcher.png
+          rm -f "$RES"/mipmap-*/ic_launcher_round.png
+
+          # Render the real Lumeceta artwork at Android launcher densities.
+          rsvg-convert -w 48  -h 48  assets/lumeceta-logo.svg -o "$RES/mipmap-mdpi/ic_launcher.png"
+          rsvg-convert -w 72  -h 72  assets/lumeceta-logo.svg -o "$RES/mipmap-hdpi/ic_launcher.png"
+          rsvg-convert -w 96  -h 96  assets/lumeceta-logo.svg -o "$RES/mipmap-xhdpi/ic_launcher.png"
+          rsvg-convert -w 144 -h 144 assets/lumeceta-logo.svg -o "$RES/mipmap-xxhdpi/ic_launcher.png"
+          rsvg-convert -w 192 -h 192 assets/lumeceta-logo.svg -o "$RES/mipmap-xxxhdpi/ic_launcher.png"
+
+          cp "$RES/mipmap-mdpi/ic_launcher.png" "$RES/mipmap-mdpi/ic_launcher_round.png"
+          cp "$RES/mipmap-hdpi/ic_launcher.png" "$RES/mipmap-hdpi/ic_launcher_round.png"
+          cp "$RES/mipmap-xhdpi/ic_launcher.png" "$RES/mipmap-xhdpi/ic_launcher_round.png"
+          cp "$RES/mipmap-xxhdpi/ic_launcher.png" "$RES/mipmap-xxhdpi/ic_launcher_round.png"
+          cp "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/mipmap-xxxhdpi/ic_launcher_round.png"
+
+          # Explicitly force Android to use the Lumeceta PNG launcher instead of
+          # the Capacitor default/adaptive icon.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"')
+          if 'android:icon="@mipmap/ic_launcher"' not in s:
+              s = s.replace('<application ', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ')
+          p.write_text(s)
+          PY
 
       - name: Allow local HTTP backend
         run: |
@@ -74,7 +96,8 @@ jobs:
           from pathlib import Path
           p = Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
-          s = s.replace('<application ', '<application android:usesCleartextTraffic="true" ')
+          if 'android:usesCleartextTraffic="true"' not in s:
+              s = s.replace('<application ', '<application android:usesCleartextTraffic="true" ')
           p.write_text(s)
           PY
 
