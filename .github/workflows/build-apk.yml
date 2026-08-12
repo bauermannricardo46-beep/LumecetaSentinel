@@ -8,9 +8,6 @@ on:
 permissions:
   contents: read
 
-env:
-  CAPACITOR_VERSION: 8.4.2
-
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -22,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -32,6 +28,20 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Prepare web bundle
+        run: |
+          rm -rf www
+          mkdir -p www
+          rsync -a ./ www/ \
+            --exclude 'www/' \
+            --exclude 'android/' \
+            --exclude 'node_modules/' \
+            --exclude 'server/' \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'package.json' \
+            --exclude 'package-lock.json'
 
       - name: Generate Android project
         run: npx cap add android
