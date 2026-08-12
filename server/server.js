@@ -36,13 +36,12 @@ function tradingBase() {
   return state.environment === 'demo' ? 'https://demo.trading212.com/api/v0' : 'https://live.trading212.com/api/v0';
 }
 
-async function t212(pathname, options = {}) {
+async function t212(pathname) {
   if (!state.apiKey || !state.apiSecret) throw new Error('Trading 212 is not connected.');
   const credentials = Buffer.from(`${state.apiKey}:${state.apiSecret}`, 'utf8').toString('base64');
   const response = await fetch(`${tradingBase()}${pathname}`, {
-    method: options.method || 'GET',
-    headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
-    body: options.body
+    method: 'GET',
+    headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' }
   });
   const text = await response.text();
   let data;
@@ -53,52 +52,50 @@ async function t212(pathname, options = {}) {
     error.details = data;
     throw error;
   }
-  return { data, headers: response.headers };
+  return data;
 }
 
-function firstNumber(...values) {
-  for (const value of values) {
-    const n = Number(value);
-    if (Number.isFinite(n)) return n;
-  }
-  return 0;
+function number(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function normalizePosition(p) {
-  const quantity = firstNumber(p.quantity, p.qty);
-  const averagePrice = firstNumber(p.averagePrice, p.averagePricePaid, p.avgPrice);
-  const currentPrice = firstNumber(p.currentPrice, p.price, p.marketPrice);
-  const ppl = firstNumber(p.ppl, p.profitLoss, p.unrealizedProfitLoss);
-  const value = firstNumber(p.currentValue, p.marketValue, p.value, quantity * currentPrice);
-  return { ticker: p.ticker || p.symbol || p.instrument?.ticker || 'UNKNOWN', quantity, averagePrice, currentPrice, value, ppl, raw: p };
+  return {
+    ticker: p.ticker || 'UNKNOWN',
+    quantity: number(p.quantity),
+    averagePrice: number(p.averagePrice),
+    currentPrice: number(p.currentPrice),
+    value: number(p.currentValue),
+    ppl: number(p.ppl),
+    pplPercentage: number(p.pplPercentage),
+    fxResult: number(p.fxResult)
+  };
 }
 
 async function getDashboard() {
-  const [cashResult, summaryResult, positionsResult, infoResult] = await Promise.all([
-    t212('/equity/account/cash'),
+  const [summary, positions] = await Promise.all([
     t212('/equity/account/summary'),
-    t212('/equity/positions'),
-    t212('/equity/account/info')
+    t212('/equity/positions')
   ]);
-
-  const cash = cashResult.data || {};
-  const accountSummary = summaryResult.data || {};
-  const rawPositions = Array.isArray(positionsResult.data) ? positionsResult.data : (positionsResult.data?.items || []);
-  const positions = rawPositions.map(normalizePosition);
-  const cashValue = firstNumber(cash.free, cash.freeCash, cash.availableToTrade, cash.total, cash.cash);
-  const invested = positions.reduce((sum, p) => sum + p.value, 0);
-  const summaryValue = firstNumber(accountSummary.totalValue, accountSummary.total, accountSummary.portfolioValue);
-  const portfolioValue = summaryValue || (cashValue + invested);
-  const ppl = firstNumber(accountSummary.unrealizedProfitLoss, accountSummary.ppl, positions.reduce((sum, p) => sum + p.ppl, 0));
-
+  const items = Array.isArray(positions) ? positions : (positions?.items || []);
+  const normalized = items.map(normalizePosition);
+  const investmentValue = number(summary?.investments?.currentValue);
+  const totalValue = number(summary?.totalValue);
   return {
     connected: true,
     environment: state.environment,
-    account: infoResult.data || {},
-    cash,
-    accountSummary,
-    positions,
-    summary: { portfolioValue, invested, cash: cashValue, pnl: ppl },
+    account: { id: summary?.id ?? null, currency: summary?.currency ?? null },
+    cash: summary?.cash || {},
+    investments: summary?.investments || {},
+    positions: normalized,
+    summary: {
+      portfolioValue: totalValue,
+      invested: investmentValue,
+      cash: number(summary?.cash?.availableToTrade),
+      realizedPnl: number(summary?.investments?.realizedProfitLoss),
+      unrealizedPnl: number(summary?.investments?.unrealizedProfitLoss)
+    },
     fetchedAt: new Date().toISOString()
   };
 }
@@ -129,7 +126,7 @@ async function handle(req, res) {
         state.apiKey = '';
         state.apiSecret = '';
         state.connectedAt = null;
-        return sendJson(res, error.status || 502, { connected: false, error: error.message, details: error.details || null });
+        return sendJson(res, error.status || 502, { connected: false, error: error.message });
       }
     } catch (error) {
       return sendJson(res, 400, { error: error.message });
