@@ -23,47 +23,32 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="connection"><span class="status-dot"></span><span id="connection-label">Not connected</span></div>
-        <div class="version">v0.2.0 · <span id="account-environment">Trading 212</span></div>
+        <div class="version">v0.3.0 · <span id="account-environment">Trading 212</span></div>
       </div>
     </aside>
-
     <main class="main">
-      <header class="topbar">
-        <div><div class="eyebrow">INVESTMENT INTELLIGENCE</div><h1 id="page-title">Overview</h1></div>
-        <div class="top-actions"><span id="last-updated" class="muted update-label"></span><button id="refresh" class="icon-btn" title="Refresh">↻</button><div class="avatar">RS</div></div>
-      </header>
-
+      <header class="topbar"><div><div class="eyebrow">INVESTMENT INTELLIGENCE</div><h1 id="page-title">Overview</h1></div><div class="top-actions"><span id="last-updated" class="muted update-label"></span><button id="refresh" class="icon-btn" title="Refresh">↻</button><div class="avatar">RS</div></div></header>
       <section id="view-overview" class="view active-view">
-        <div class="hero-card card">
-          <div><div class="muted">TOTAL PORTFOLIO VALUE</div><div class="hero-value" id="portfolio-value">—</div><div id="portfolio-change" class="muted">— <span>(connect Trading 212)</span></div></div>
-          <div class="hero-orbit"><span>◈</span></div>
-        </div>
+        <div class="hero-card card"><div><div class="muted">TOTAL PORTFOLIO VALUE</div><div class="hero-value" id="portfolio-value">—</div><div id="portfolio-change" class="muted">— <span>(connect Trading 212)</span></div></div><div class="hero-orbit"><span>◈</span></div></div>
         <div class="metrics-grid">
           <article class="card metric"><span class="muted">INVESTED</span><strong>—</strong><span class="muted">live account value</span></article>
           <article class="card metric"><span class="muted">AVAILABLE CASH</span><strong>—</strong><span class="muted">cash available to trade</span></article>
           <article class="card metric"><span class="muted">UNREALIZED P/L</span><strong>—</strong><span class="muted">live</span></article>
-          <article class="card metric"><span class="muted">RISK SCORE</span><strong id="risk-score">—</strong><span id="risk-label" class="risk-label">CALCULATION NEXT</span></article>
+          <article class="card metric"><span class="muted">RISK SCORE</span><strong id="risk-score">—</strong><span id="risk-label" class="risk-label">CALCULATION</span></article>
         </div>
         <div class="two-col">
-          <section class="card chart-card"><div class="section-head"><div><div class="muted">PERFORMANCE</div><h2>Portfolio growth</h2></div><span class="pill">HISTORY NEXT</span></div><div class="chart-wrap"><div class="empty-state chart-placeholder">Historical performance wird im nächsten Schritt aus Trading-212-History aufgebaut.</div></div></section>
+          <section class="card chart-card"><div class="section-head"><div><div class="muted">PERFORMANCE</div><h2>Portfolio history</h2></div><span class="pill">LOADING</span></div><div class="chart-wrap"><div class="empty-state">Reconstructing real history from Trading 212 fills and daily market closes…</div></div></section>
           <section class="card"><div class="section-head"><div><div class="muted">ALLOCATION</div><h2>Holdings</h2></div></div><div class="allocation"><div class="donut"><span id="asset-count">0<br><small>ASSETS</small></span></div><div id="allocation-legend" class="legend"><div class="muted">Noch keine Live-Daten.</div></div></div></section>
         </div>
-        <section class="card"><div class="section-head"><div><div class="muted">SENTINEL</div><h2>Market signals</h2></div><button class="text-btn" data-view-target="signals">View all →</button></div><div class="signal-row"><div class="signal-icon neutral-bg">◈</div><div><strong>Sentinel Engine</strong><p>Risk- und Marktsignale werden auf Basis echter Portfolio- und Marktdaten aufgebaut.</p></div><span class="signal-score">NEXT</span></div></section>
+        <section class="card"><div class="section-head"><div><div class="muted">SENTINEL</div><h2>Market signals</h2></div><button class="text-btn" data-view-target="signals">View all →</button></div><div class="signal-row"><div class="signal-icon neutral-bg">◈</div><div><strong>Sentinel Engine</strong><p>Berechnet Risiko und Momentum aus echten Portfolio-, Trading-212-History- und Marktpreisdaten.</p></div><span class="signal-score">LIVE</span></div></section>
       </section>
-
-      <section id="view-portfolio" class="view">
-        <section class="card">
-          <div class="section-head"><div><div class="muted">LIVE POSITIONS</div><h2>Your portfolio</h2></div><span class="pill live">● LIVE</span></div>
-          <div class="table"><div class="table-head portfolio-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"><div class="empty-state">Trading 212 verbinden…</div></div></div>
-        </section>
-      </section>
-
+      <section id="view-portfolio" class="view"><section class="card"><div class="section-head"><div><div class="muted">LIVE POSITIONS</div><h2>Your portfolio</h2></div><span class="pill live">● LIVE</span></div><div class="table"><div class="table-head portfolio-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"><div class="empty-state">Trading 212 verbinden…</div></div></div></section></section>
       <section id="view-watchlist" class="view"><section class="card"><div class="section-head"><div><div class="muted">WATCHLIST</div><h2>Tracked assets</h2></div><span class="pill">NEXT STEP</span></div><div class="empty-state">Watchlist wird mit Trading-212-Instrumenten und Marktdaten aufgebaut.</div></section></section>
-
-      <section id="view-signals" class="view"><section class="card"><div class="section-head"><div><div class="muted">SENTINEL ENGINE</div><h2>Signals</h2></div><span class="pill live">● LIVE DATA</span></div><div class="signal-detail"><span class="signal-score big">—</span><div><h3>Engine wird aufgebaut</h3><p>Die Grundlage sind jetzt echte Trading-212-Portfolio- und Account-Daten. Als Nächstes kommen historische Daten, Marktpreise und daraus berechnete Risiko-/Momentum-Signale.</p></div></div></section></section>
+      <section id="view-signals" class="view"><section class="card"><div class="section-head"><div><div class="muted">SENTINEL ENGINE</div><h2>Signals</h2></div><span class="pill live">● LIVE DATA</span></div><div class="signal-detail"><span class="signal-score big">—</span><div><h3>Engine wird geladen</h3><p>Risk und Momentum werden aus realen historischen Kursen und deiner Trading-212-History berechnet.</p></div></div></section></section>
     </main>
   </div>
   <div id="toast" class="toast">Updated ✓</div>
   <script src="app.js"></script>
+  <script src="analytics-client.js"></script>
 </body>
 </html>
