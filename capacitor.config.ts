@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.lumeceta.sentinel',
   appName: 'Lumeceta Sentinel',
-  webDir: '.',
+  webDir: 'www',
   bundledWebRuntime: false,
   server: {
     androidScheme: 'https',
