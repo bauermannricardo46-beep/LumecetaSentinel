@@ -1,5 +1,5 @@
 const views = ['overview','portfolio','watchlist','signals'];
-const titles = {overview:'Overview', portfolio:'Portfolio', watchlist:'Watchlist', signals:'Signals'};
+const titles = { overview: 'Overview', portfolio: 'Portfolio', watchlist: 'Watchlist', signals: 'Signals' };
 const API = '/api';
 
 const showView = (name) => {
@@ -23,9 +23,12 @@ const showToast = (message, error = false) => {
 };
 
 const formatEUR = value => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Number(value) || 0);
+const formatNumber = (value, digits = 4) => new Intl.NumberFormat('de-DE', { maximumFractionDigits: digits }).format(Number(value) || 0);
+const signedEUR = value => `${Number(value) >= 0 ? '+' : ''}${formatEUR(value)}`;
+const signedPercent = value => `${Number(value) >= 0 ? '+' : ''}${formatNumber(value, 2)}%`;
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  return String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
 function setConnection(connected) {
@@ -40,36 +43,77 @@ function setConnection(connected) {
 function ensureLivePortfolioTable() {
   const table = document.querySelector('#view-portfolio .table');
   if (!table || document.getElementById('live-positions')) return;
-  table.innerHTML = '<div class="table-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"></div>';
+  table.innerHTML = '<div class="table-head portfolio-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"></div>';
 }
 
 function updateDashboard(data) {
   if (!data?.summary) return;
-  document.getElementById('portfolio-value').textContent = formatEUR(data.summary.portfolioValue);
-  const pnl = Number(data.summary.pnl || 0);
-  document.getElementById('portfolio-change').innerHTML = `${pnl >= 0 ? '+' : ''}${formatEUR(pnl)} <span>(live P/L)</span>`;
+  const summary = data.summary;
+  const unrealized = Number(summary.unrealizedPnl || 0);
+
+  document.getElementById('portfolio-value').textContent = formatEUR(summary.portfolioValue);
+  document.getElementById('portfolio-change').className = unrealized >= 0 ? 'positive' : 'negative';
+  document.getElementById('portfolio-change').innerHTML = `${signedEUR(unrealized)} <span>(unrealized P/L)</span>`;
+
   const metrics = document.querySelectorAll('#view-overview .metric strong');
-  if (metrics[0]) metrics[0].textContent = formatEUR(data.summary.invested);
-  if (metrics[1]) metrics[1].textContent = formatEUR(data.summary.cash);
-  if (metrics[2]) metrics[2].textContent = `${pnl >= 0 ? '+' : ''}${formatEUR(pnl)}`;
-  renderPositions(data.positions || []);
+  if (metrics[0]) metrics[0].textContent = formatEUR(summary.invested);
+  if (metrics[1]) metrics[1].textContent = formatEUR(summary.cash);
+  if (metrics[2]) {
+    metrics[2].textContent = signedEUR(unrealized);
+    metrics[2].className = unrealized >= 0 ? 'positive' : 'negative';
+  }
+
+  const subLabels = document.querySelectorAll('#view-overview .metric .muted:last-child');
+  if (subLabels[2]) subLabels[2].textContent = 'unrealized P/L';
+
+  const risk = document.getElementById('risk-score');
+  if (risk) risk.textContent = '—';
+  const riskLabel = document.getElementById('risk-label');
+  if (riskLabel) riskLabel.textContent = 'CALCULATION NEXT';
+
+  renderPositions(data.positions || [], summary.portfolioValue);
+  renderAllocation(data.positions || [], summary.cash, summary.portfolioValue);
+  renderAccountMeta(data);
 }
 
-function renderPositions(positions) {
+function renderPositions(positions, portfolioValue) {
   ensureLivePortfolioTable();
   const rows = document.getElementById('live-positions');
   if (!rows) return;
   rows.innerHTML = '';
-  const total = positions.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+
+  const total = Number(portfolioValue) || positions.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
   positions.forEach(p => {
     const row = document.createElement('div');
     row.className = 'table-row';
-    const weight = total ? (Number(p.value) / total * 100) : 0;
-    const ppl = Number(p.pnl || 0);
-    row.innerHTML = `<span><b>${escapeHtml(p.ticker)}</b><small>${Number(p.quantity || 0).toFixed(4)} units</small></span><span>${formatEUR(p.value)}</span><span class="${ppl >= 0 ? 'positive' : 'negative'}">${ppl >= 0 ? '+' : ''}${formatEUR(ppl)}</span><span>${weight.toFixed(1)}%</span>`;
+    const value = Number(p.value) || 0;
+    const weight = total ? value / total * 100 : 0;
+    const pnl = Number(p.pnl || 0);
+    const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+    row.innerHTML = `<span><b>${escapeHtml(p.ticker)}</b><small>${formatNumber(p.quantity)} units · avg ${formatEUR(p.averagePrice)}</small></span><span>${formatEUR(value)}<small>${formatEUR(p.currentPrice)} current</small></span><span class="${pnlClass}">${signedEUR(pnl)}<small>${signedPercent(p.pnlPercentage)}</small></span><span>${weight.toFixed(1)}%</span>`;
     rows.appendChild(row);
   });
+
   if (!positions.length) rows.innerHTML = '<div class="empty-state">Keine offenen Positionen gefunden.</div>';
+}
+
+function renderAllocation(positions, cash, totalValue) {
+  const legend = document.getElementById('allocation-legend');
+  const assetCount = document.getElementById('asset-count');
+  if (!legend) return;
+  const total = Number(totalValue) || 0;
+  const entries = positions.map(p => ({ label: p.ticker, value: Number(p.value) || 0 }));
+  if (cash > 0) entries.push({ label: 'Cash', value: Number(cash) });
+  const visible = entries.filter(e => e.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
+  legend.innerHTML = visible.map((e, i) => `<div><i class="dot d${(i % 4) + 1}"></i>${escapeHtml(e.label)} <b>${total ? (e.value / total * 100).toFixed(1) : '0.0'}%</b></div>`).join('');
+  if (assetCount) assetCount.textContent = `${positions.length} ASSET${positions.length === 1 ? '' : 'S'}`;
+}
+
+function renderAccountMeta(data) {
+  const env = document.getElementById('account-environment');
+  const fetched = document.getElementById('last-updated');
+  if (env) env.textContent = data.environment === 'demo' ? 'Trading 212 Demo' : 'Trading 212 Live';
+  if (fetched && data.fetchedAt) fetched.textContent = `Updated ${new Date(data.fetchedAt).toLocaleTimeString('de-DE')}`;
 }
 
 async function api(path, options = {}) {
@@ -120,7 +164,7 @@ function injectConnectionUI() {
     submit.textContent = 'Verbinde…';
     try {
       const data = await api('/connect', { method: 'POST', body: JSON.stringify({ apiKey: document.getElementById('api-key').value.trim(), apiSecret: document.getElementById('api-secret').value.trim(), environment: document.getElementById('environment').value }) });
-      updateDashboard(data);
+      await refreshDashboard(false);
       setConnection(true);
       close();
       showToast('Trading 212 erfolgreich verbunden ✓');
