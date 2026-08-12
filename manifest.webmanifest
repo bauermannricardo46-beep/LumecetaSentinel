@@ -1,0 +1,10 @@
+{
+  "name": "Lumeceta Sentinel",
+  "short_name": "Lumeceta",
+  "description": "Investment Intelligence Dashboard",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#09070f",
+  "theme_color": "#09070f",
+  "icons": []
+}
