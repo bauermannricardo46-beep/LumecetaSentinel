@@ -1,13 +1,22 @@
 {
   "name": "lumeceta-sentinel",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "private": true,
-  "description": "Lumeceta Sentinel investment intelligence dashboard with a local Trading 212 read-only bridge",
+  "description": "Lumeceta Sentinel investment intelligence dashboard with Trading 212 read-only bridge and Android build",
   "main": "server/server.js",
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.4.2",
+    "@capacitor/core": "8.4.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.4.2"
   }
 }
