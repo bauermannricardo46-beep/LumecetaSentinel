@@ -8,6 +8,14 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     cleartext: true
+  },
+  plugins: {
+    // Use Capacitor's native HTTP stack for the Android APK.
+    // This avoids WebView fetch/CORS failures when the APK talks to
+    // the local Lumeceta backend over the LAN.
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 
