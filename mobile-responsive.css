@@ -111,3 +111,56 @@ body{min-height:100dvh;padding:0}
 @media(min-width:701px) and (max-width:1000px){
   .main{padding-left:24px;padding-right:24px}
 }
+
+/* Android WebView: do not trust env(safe-area-inset-*). Some Samsung/Android
+   builds report 0px even though the system status/navigation bars are present. */
+@media(max-width:700px){
+  .android-webview .main{
+    padding-top:calc(30px + var(--safe-top));
+    padding-bottom:calc(34px + var(--mobile-nav-h) + 32px + var(--safe-bottom));
+  }
+  .android-webview .topbar{
+    margin-top:0;
+    padding-top:14px;
+    padding-bottom:12px;
+    gap:12px;
+  }
+  .android-webview .topbar h1{margin-top:8px}
+  .android-webview .mobile-bottom-nav{
+    left:12px;
+    right:12px;
+    bottom:calc(28px + var(--safe-bottom));
+    height:68px;
+    padding:6px;
+    border-radius:18px;
+  }
+  .android-webview .mobile-bottom-nav button{
+    min-height:56px;
+    min-width:0;
+    padding:5px 3px;
+  }
+  .android-webview .mobile-bottom-nav button .mobile-nav-icon{font-size:21px}
+  .android-webview .mobile-bottom-nav button .mobile-nav-label{font-size:9px}
+  .android-webview .view{
+    min-height:calc(100dvh - var(--safe-top) - 120px);
+  }
+  .android-webview .connection-modal{
+    max-height:calc(100dvh - 18px);
+    padding-bottom:calc(26px + var(--safe-bottom));
+  }
+  .android-webview .mobile-bottom-nav,
+  .android-webview .mobile-bottom-nav *{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+}
+
+/* Never let the system UI steal the last navigation row's touch area. */
+@media(max-width:700px){
+  .mobile-bottom-nav{will-change:transform;contain:layout paint;}
+  .mobile-bottom-nav button{outline:none;-webkit-touch-callout:none;}
+  .mobile-bottom-nav button:active{transform:scale(.97);}
+}
+
+.connect-error.success{border-color:rgba(74,222,128,.35)!important;color:#72f2a2!important;background:rgba(74,222,128,.08)!important}
+.connect-error.error{border-color:rgba(255,92,128,.35)!important;color:#ff9db3!important;background:rgba(255,92,128,.08)!important}
