@@ -27,7 +27,7 @@ async function getDashboard(){
   const [summary,positions]=await Promise.all([t212('/equity/account/summary'),t212('/equity/positions')]);
   const items=Array.isArray(positions)?positions:(positions?.items||[]),normalized=items.map(normalizePosition),investments=summary?.investments||{},cashObject=summary?.cash||{};
   const portfolioValue=number(summary?.totalValue),invested=number(investments.currentValue),cash=number(cashObject.availableToTrade),unrealizedPnl=number(investments.unrealizedProfitLoss),realizedPnl=number(investments.realizedProfitLoss);
-  return{connected:true,environment:state.environment,account:{id:summary?.id??null,currency:summary?.currency??null},cash:cashObject,investments,positions:normalized,summary:{portfolioValue,invested,cash,realizedPnl,unrealizedPnl,totalPnl:realizedPnl+unrealizedPnl},fetchedAt:new Date().toISOString()};
+  return{connected:true,environment:state.environment,account:{id:summary?.id??null,currency:summary?.currency??null},cash:cashObject,investments,positions:normalized,summary:{portfolioValue,invested,cash,realizedPnl,unrealizedPnl,totalPnl:realizedPnl+unrealizedPnl},fetchedAt:new Date().toISOString(),stale:false};
 }
 
 const analytics=createAnalyticsService({t212});
@@ -40,12 +40,20 @@ async function handle(req,res){
     try{const body=await readBody(req),apiKey=String(body.apiKey||'').trim(),apiSecret=String(body.apiSecret||'').trim(),environment=body.environment==='demo'?'demo':'live';
       if(!apiKey||!apiSecret)return sendJson(res,400,{error:'API Key und API Secret sind erforderlich.'});
       state.apiKey=apiKey;state.apiSecret=apiSecret;state.environment=environment;
-      try{const dashboard=await getDashboard();state.connectedAt=new Date().toISOString();state.lastDashboard=dashboard;return sendJson(res,200,{connected:true,environment,account:dashboard.account,summary:dashboard.summary,positions:dashboard.positions.length,fetchedAt:dashboard.fetchedAt});}
-      catch(error){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
+      try{
+        const dashboard=await getDashboard();
+        state.connectedAt=new Date().toISOString();state.lastDashboard=dashboard;
+        return sendJson(res,200,{connected:true,environment,account:dashboard.account,summary:dashboard.summary,positions:dashboard.positions.length,fetchedAt:dashboard.fetchedAt,dashboard});
+      }catch(error){state.apiKey='';state.apiSecret='';state.connectedAt=null;state.lastDashboard=null;return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
     }catch(error){return sendJson(res,400,{error:error.message});}
   }
   if(url.pathname==='/api/dashboard'&&req.method==='GET'){
-    try{const dashboard=await getDashboard();state.lastDashboard=dashboard;return sendJson(res,200,dashboard);}catch(error){return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});}
+    try{
+      const dashboard=await getDashboard();state.lastDashboard=dashboard;return sendJson(res,200,dashboard);
+    }catch(error){
+      if(error.status===429&&state.lastDashboard)return sendJson(res,200,{...state.lastDashboard,stale:true,warning:'Trading 212 rate limit reached; showing the last confirmed live snapshot.'});
+      return sendJson(res,error.status||502,{connected:false,error:error.message,trading212Status:error.status||null});
+    }
   }
   if(url.pathname==='/api/analytics'&&req.method==='GET'){
     try{
