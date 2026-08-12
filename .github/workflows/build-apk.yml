@@ -55,17 +55,16 @@ jobs:
           sudo apt-get install -y -qq imagemagick librsvg2-bin
 
           RES="android/app/src/main/res"
-          mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi" "$RES/mipmap-anydpi-v26" "$RES/drawable"
+          mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi"
 
-          # Remove Capacitor's generated launcher/adaptive icon resources so Android
-          # cannot fall back to the default Capacitor logo.
+          # Remove Capacitor generated launcher/adaptive resources.
           rm -f "$RES"/mipmap-anydpi-v26/ic_launcher.xml
           rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_round.xml
           rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_foreground.xml
           rm -f "$RES"/mipmap-*/ic_launcher.png
           rm -f "$RES"/mipmap-*/ic_launcher_round.png
 
-          # Render the real Lumeceta artwork at Android launcher densities.
+          # Render the supplied Lumeceta artwork for every launcher density.
           rsvg-convert -w 48  -h 48  assets/lumeceta-logo.svg -o "$RES/mipmap-mdpi/ic_launcher.png"
           rsvg-convert -w 72  -h 72  assets/lumeceta-logo.svg -o "$RES/mipmap-hdpi/ic_launcher.png"
           rsvg-convert -w 96  -h 96  assets/lumeceta-logo.svg -o "$RES/mipmap-xhdpi/ic_launcher.png"
@@ -78,15 +77,15 @@ jobs:
           cp "$RES/mipmap-xxhdpi/ic_launcher.png" "$RES/mipmap-xxhdpi/ic_launcher_round.png"
           cp "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/mipmap-xxxhdpi/ic_launcher_round.png"
 
-          # Explicitly force Android to use the Lumeceta PNG launcher instead of
-          # the Capacitor default/adaptive icon.
+          # Patch the generated manifest without duplicating attributes.
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
-          s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"')
-          if 'android:icon="@mipmap/ic_launcher"' not in s:
-              s = s.replace('<application ', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ')
+          s = re.sub(r'\s+android:roundIcon="[^"]*"', '', s)
+          s = re.sub(r'\s+android:icon="[^"]*"', '', s)
+          s = s.replace('<application ', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ', 1)
           p.write_text(s)
           PY
 
@@ -97,9 +96,13 @@ jobs:
           p = Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
           if 'android:usesCleartextTraffic="true"' not in s:
-              s = s.replace('<application ', '<application android:usesCleartextTraffic="true" ')
+              s = s.replace('<application ', '<application android:usesCleartextTraffic="true" ', 1)
           p.write_text(s)
           PY
+
+      - name: Validate Android manifest
+        working-directory: android
+        run: ./gradlew processDebugMainManifest --no-daemon
 
       - name: Build debug APK
         working-directory: android
