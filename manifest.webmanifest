@@ -6,5 +6,7 @@
   "display": "standalone",
   "background_color": "#09070f",
   "theme_color": "#09070f",
-  "icons": []
+  "icons": [
+    {"src":"assets/lumeceta-logo.svg","sizes":"256x256","type":"image/svg+xml","purpose":"any maskable"}
+  ]
 }
