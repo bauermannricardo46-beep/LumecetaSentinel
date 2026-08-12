@@ -1,0 +1,99 @@
+/* Native-like mobile shell: adapts to every Android/iOS viewport, including gesture/navigation bars. */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--mobile-nav-h:68px}
+html,body{width:100%;min-height:100%;overflow-x:hidden}
+body{min-height:100dvh;padding:0}
+.app-shell{min-height:100dvh}
+.mobile-bottom-nav{display:none}
+.mobile-page-shell{display:contents}
+
+@media(max-width:700px){
+  body{padding-bottom:calc(var(--mobile-nav-h) + var(--safe-bottom));background:radial-gradient(circle at 80% -10%,#251542 0,transparent 42%),var(--bg)}
+  .app-shell{display:block;min-height:100dvh}
+  .sidebar{display:none!important}
+  .main{width:100%;max-width:none;margin:0;padding:calc(12px + var(--safe-top)) max(12px,var(--safe-left)) calc(20px + var(--mobile-nav-h) + var(--safe-bottom));}
+  .topbar{position:sticky;top:0;z-index:30;margin:calc(-1 * var(--safe-top)) -12px 14px;padding:calc(10px + var(--safe-top)) 12px 10px;background:rgba(9,7,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid rgba(41,32,57,.75)}
+  .topbar h1{font-size:22px;margin-top:4px}
+  .eyebrow{font-size:8px}
+  .top-actions{gap:6px}
+  .top-actions .update-label{display:none}
+  .avatar{display:none}
+  .connect-btn{max-width:116px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;padding:9px}
+  .icon-btn{width:36px;height:36px;border-radius:10px}
+  .card{border-radius:13px;padding:16px;box-shadow:0 10px 35px rgba(0,0,0,.18)}
+  .hero-card{min-height:145px}
+  .hero-value{font-size:clamp(28px,8vw,38px)}
+  .hero-orbit{width:72px;height:72px;font-size:25px;flex:none}
+  .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:9px 0}
+  .metric{min-height:105px;padding:14px}
+  .metric strong{font-size:18px;overflow-wrap:anywhere}
+  .two-col{display:block;margin-bottom:9px}
+  .two-col>.card{margin-bottom:9px}
+  .chart-wrap{height:180px}
+  .chart-wrap svg{height:150px}
+  .allocation{margin-top:12px;gap:14px}
+  .donut{width:108px;height:108px;flex:none}
+  .donut:before{width:74px;height:74px}
+  .legend{gap:10px;font-size:10px}
+  .section-head{margin-bottom:14px}
+  .section-head h2{font-size:15px}
+  .watch-grid{grid-template-columns:1fr!important;gap:9px}
+  .watch-item{padding:14px}
+  .table{width:100%;overflow:hidden}
+  .table-head,.table-row{grid-template-columns:minmax(90px,1.7fr) minmax(75px,1fr) minmax(65px,.9fr)!important;gap:8px}
+  .table-head span:last-child,.table-row span:last-child{display:none!important}
+  .table-row{padding:14px 0;font-size:10px}
+  .table-row small{font-size:8px;line-height:1.35}
+  .signal-detail{gap:12px;padding:14px 0}
+  .signal-score.big{font-size:26px;min-width:45px}
+  .signal-row{gap:10px;padding:12px 0}
+  .signal-row p{font-size:10px}
+  .text-btn{font-size:10px}
+
+  /* Every primary menu becomes a complete mobile page. */
+  .view{width:100%;min-height:calc(100dvh - var(--safe-top) - var(--mobile-nav-h));}
+  .view.active-view{display:block;animation:mobilePageIn .16s ease-out}
+  @keyframes mobilePageIn{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:none}}
+  #view-overview,#view-portfolio,#view-watchlist,#view-signals{padding-bottom:10px}
+
+  /* Fixed bottom navigation, independent of device resolution. */
+  .mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:grid;grid-template-columns:repeat(4,1fr);height:var(--mobile-nav-h);padding:7px 8px var(--safe-bottom);background:rgba(10,7,15,.94);border-top:1px solid var(--line);backdrop-filter:blur(22px);box-shadow:0 -12px 35px rgba(0,0,0,.32)}
+  .mobile-bottom-nav button{min-width:0;border:0;background:transparent;color:var(--muted);border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mobile-bottom-nav button .mobile-nav-icon{font-size:19px;line-height:1}
+  .mobile-bottom-nav button .mobile-nav-label{font-size:8px;line-height:1;font-weight:700;letter-spacing:.05em}
+  .mobile-bottom-nav button.active{color:var(--accent2);background:rgba(155,108,255,.12);box-shadow:inset 0 0 0 1px rgba(155,108,255,.14)}
+  .mobile-bottom-nav button.active .mobile-nav-icon{filter:drop-shadow(0 0 7px rgba(155,108,255,.55))}
+
+  /* Prevent fixed overlays/modals from being larger than the actual viewport. */
+  .modal-backdrop{align-items:flex-end;padding:0;min-height:100dvh}
+  .connection-modal{width:100%;max-width:none;max-height:calc(100dvh - var(--safe-top));overflow:auto;border-radius:18px 18px 0 0;padding:20px 16px calc(20px + var(--safe-bottom));animation:sheetIn .18s ease-out}
+  @keyframes sheetIn{from{transform:translateY(30px);opacity:.5}to{transform:none;opacity:1}}
+  .connection-modal h2{font-size:21px;padding-right:40px}
+  .connection-modal input,.connection-modal select{min-height:46px;font-size:16px}
+  .modal-close{top:14px;right:14px}
+  .settings-backdrop{align-items:flex-end}
+  .settings-panel{width:100%;height:min(92dvh,760px);max-height:92dvh;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:20px 16px calc(20px + var(--safe-bottom));transform:translateY(30px)}
+  .settings-header h2{font-size:21px}
+  .settings-backdrop.open .settings-panel{transform:none}
+  .entry-hero{grid-template-columns:1fr!important}
+  .entry-grid{grid-template-columns:repeat(2,1fr)!important}
+  .entry-list-head{display:none!important}
+  .entry-row{grid-template-columns:1fr .9fr .4fr!important}
+  .entry-row small{grid-column:1/-1!important}
+}
+
+@media(min-width:701px){.mobile-bottom-nav{display:none!important}}
+
+@media(max-width:380px){
+  .main{padding-left:9px;padding-right:9px}
+  .topbar{margin-left:-9px;margin-right:-9px;padding-left:9px;padding-right:9px}
+  .hero-card{padding:14px}
+  .hero-orbit{width:58px;height:58px;font-size:20px}
+  .metric{padding:12px}
+  .metric strong{font-size:16px}
+  .mobile-bottom-nav{padding-left:4px;padding-right:4px}
+  .mobile-bottom-nav button .mobile-nav-label{font-size:7px}
+}
+
+@media(min-width:701px) and (max-width:1000px){
+  .main{padding-left:24px;padding-right:24px}
+}
