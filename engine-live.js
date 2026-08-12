@@ -5,7 +5,7 @@
 
   async function load() {
     try {
-      const response = await fetch('/api/analytics?force=1', { headers: { Accept: 'application/json' } });
+      const response = await fetch('/api/analytics', { headers: { Accept: 'application/json' } });
       if (!response.ok) return;
       const data = await response.json();
       render(data);
