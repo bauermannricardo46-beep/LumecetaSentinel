@@ -7,18 +7,15 @@ const PORT = Number(process.env.PORT || 8787);
 const ROOT = path.resolve(__dirname, '..');
 const state = { apiKey: '', apiSecret: '', environment: 'live', connectedAt: null };
 
-const allowedOrigins = new Set(['http://localhost:8787', 'http://127.0.0.1:8787']);
-
 function sendJson(res, status, body) {
-  const payload = JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS'
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
   });
-  res.end(payload);
+  res.end(JSON.stringify(body));
 }
 
 function readBody(req) {
@@ -36,25 +33,22 @@ function readBody(req) {
 }
 
 function tradingBase() {
-  return state.environment === 'demo'
-    ? 'https://demo.trading212.com/api/v0'
-    : 'https://live.trading212.com/api/v0';
+  return state.environment === 'demo' ? 'https://demo.trading212.com/api/v0' : 'https://live.trading212.com/api/v0';
 }
 
 async function t212(pathname, options = {}) {
   if (!state.apiKey || !state.apiSecret) throw new Error('Trading 212 is not connected.');
-  const token = Buffer.from(`${state.apiKey}:${state.apiSecret}`, 'utf8').toString('base64');
+  const credentials = Buffer.from(`${state.apiKey}:${state.apiSecret}`, 'utf8').toString('base64');
   const response = await fetch(`${tradingBase()}${pathname}`, {
     method: options.method || 'GET',
-    headers: { Authorization: `Basic ${token}`, Accept: 'application/json' },
+    headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
     body: options.body
   });
   const text = await response.text();
   let data;
   try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
   if (!response.ok) {
-    const message = data?.message || data?.error || `Trading 212 returned HTTP ${response.status}`;
-    const error = new Error(message);
+    const error = new Error(data?.message || data?.error || `Trading 212 returned HTTP ${response.status}`);
     error.status = response.status;
     error.details = data;
     throw error;
@@ -76,37 +70,35 @@ function normalizePosition(p) {
   const currentPrice = firstNumber(p.currentPrice, p.price, p.marketPrice);
   const ppl = firstNumber(p.ppl, p.profitLoss, p.unrealizedProfitLoss);
   const value = firstNumber(p.currentValue, p.marketValue, p.value, quantity * currentPrice);
-  return {
-    ticker: p.ticker || p.instrument?.ticker || p.symbol || 'UNKNOWN',
-    quantity,
-    averagePrice,
-    currentPrice,
-    value,
-    ppl,
-    raw: p
-  };
+  return { ticker: p.ticker || p.symbol || p.instrument?.ticker || 'UNKNOWN', quantity, averagePrice, currentPrice, value, ppl, raw: p };
 }
 
 async function getDashboard() {
-  const [cashResult, portfolioResult, infoResult] = await Promise.all([
+  const [cashResult, summaryResult, positionsResult, infoResult] = await Promise.all([
     t212('/equity/account/cash'),
-    t212('/equity/portfolio'),
+    t212('/equity/account/summary'),
+    t212('/equity/positions'),
     t212('/equity/account/info')
   ]);
+
   const cash = cashResult.data || {};
-  const positionsRaw = Array.isArray(portfolioResult.data) ? portfolioResult.data : (portfolioResult.data?.items || []);
-  const positions = positionsRaw.map(normalizePosition);
+  const accountSummary = summaryResult.data || {};
+  const rawPositions = Array.isArray(positionsResult.data) ? positionsResult.data : (positionsResult.data?.items || []);
+  const positions = rawPositions.map(normalizePosition);
   const cashValue = firstNumber(cash.free, cash.freeCash, cash.availableToTrade, cash.total, cash.cash);
   const invested = positions.reduce((sum, p) => sum + p.value, 0);
-  const portfolioValue = firstNumber(cash.total, cash.totalCash, cashValue) + invested;
-  const ppl = positions.reduce((sum, p) => sum + p.ppl, 0);
+  const summaryValue = firstNumber(accountSummary.totalValue, accountSummary.total, accountSummary.portfolioValue);
+  const portfolioValue = summaryValue || (cashValue + invested);
+  const ppl = firstNumber(accountSummary.unrealizedProfitLoss, accountSummary.ppl, positions.reduce((sum, p) => sum + p.ppl, 0));
+
   return {
     connected: true,
     environment: state.environment,
     account: infoResult.data || {},
-    cash: cash,
+    cash,
+    accountSummary,
     positions,
-    summary: { portfolioValue, invested, cash: cashValue, ppl },
+    summary: { portfolioValue, invested, cash: cashValue, pnl: ppl },
     fetchedAt: new Date().toISOString()
   };
 }
