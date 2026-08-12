@@ -19,7 +19,7 @@ const showToast = (message, error = false) => {
   toast.textContent = message;
   toast.classList.toggle('error', error);
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2200);
+  setTimeout(() => toast.classList.remove('show'), 2600);
 };
 
 const formatEUR = value => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Number(value) || 0);
@@ -31,19 +31,41 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
-function setConnection(connected) {
+function setConnection(connected, environment = 'live') {
   const label = document.getElementById('connection-label');
   const dot = document.querySelector('.status-dot');
   if (label) label.textContent = connected ? 'Trading 212 connected' : 'Not connected';
   if (dot) dot.classList.toggle('offline', !connected);
   const button = document.getElementById('connect-btn');
   if (button) button.textContent = connected ? 'Trading 212 ✓' : 'Connect Trading 212';
+  const env = document.getElementById('account-environment');
+  if (env) env.textContent = environment === 'demo' ? 'Trading 212 Demo' : 'Trading 212 Live';
 }
 
 function ensureLivePortfolioTable() {
   const table = document.querySelector('#view-portfolio .table');
   if (!table || document.getElementById('live-positions')) return;
   table.innerHTML = '<div class="table-head portfolio-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"></div>';
+}
+
+function clearDashboard(message = 'Keine Live-Daten verfügbar.') {
+  const value = document.getElementById('portfolio-value');
+  const change = document.getElementById('portfolio-change');
+  if (value) value.textContent = '—';
+  if (change) change.innerHTML = '— <span>(keine Live-Verbindung)</span>';
+
+  const metrics = document.querySelectorAll('#view-overview .metric strong');
+  metrics.forEach(metric => { if (metric.id !== 'risk-score') metric.textContent = '—'; });
+
+  const rows = document.getElementById('live-positions');
+  if (rows) rows.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+
+  const legend = document.getElementById('allocation-legend');
+  if (legend) legend.innerHTML = '<div class="muted">Noch keine Live-Daten.</div>';
+  const assetCount = document.getElementById('asset-count');
+  if (assetCount) assetCount.innerHTML = '0<br><small>ASSETS</small>';
+  const risk = document.getElementById('risk-score');
+  if (risk) risk.textContent = '—';
 }
 
 function updateDashboard(data) {
@@ -90,11 +112,12 @@ function renderPositions(positions, portfolioValue) {
     const weight = total ? value / total * 100 : 0;
     const pnl = Number(p.pnl || 0);
     const pnlClass = pnl >= 0 ? 'positive' : 'negative';
-    row.innerHTML = `<span><b>${escapeHtml(p.ticker)}</b><small>${formatNumber(p.quantity)} units · avg ${formatEUR(p.averagePrice)}</small></span><span>${formatEUR(value)}<small>${formatEUR(p.currentPrice)} current</small></span><span class="${pnlClass}">${signedEUR(pnl)}<small>${signedPercent(p.pnlPercentage)}</small></span><span>${weight.toFixed(1)}%</span>`;
+    const name = p.name && p.name !== p.ticker ? p.name : '';
+    row.innerHTML = `<span><b>${escapeHtml(p.ticker)}</b><small>${escapeHtml(name)}${name ? ' · ' : ''}${formatNumber(p.quantity)} units · avg ${formatEUR(p.averagePrice)}</small></span><span>${formatEUR(value)}<small>${formatEUR(p.currentPrice)} current</small></span><span class="${pnlClass}">${signedEUR(pnl)}<small>${signedPercent(p.pnlPercentage)}</small></span><span>${weight.toFixed(1)}%</span>`;
     rows.appendChild(row);
   });
 
-  if (!positions.length) rows.innerHTML = '<div class="empty-state">Keine offenen Positionen gefunden.</div>';
+  if (!positions.length) rows.innerHTML = '<div class="empty-state">Keine offenen Positionen bei Trading 212 gefunden.</div>';
 }
 
 function renderAllocation(positions, cash, totalValue) {
@@ -105,8 +128,10 @@ function renderAllocation(positions, cash, totalValue) {
   const entries = positions.map(p => ({ label: p.ticker, value: Number(p.value) || 0 }));
   if (cash > 0) entries.push({ label: 'Cash', value: Number(cash) });
   const visible = entries.filter(e => e.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
-  legend.innerHTML = visible.map((e, i) => `<div><i class="dot d${(i % 4) + 1}"></i>${escapeHtml(e.label)} <b>${total ? (e.value / total * 100).toFixed(1) : '0.0'}%</b></div>`).join('');
-  if (assetCount) assetCount.textContent = `${positions.length} ASSET${positions.length === 1 ? '' : 'S'}`;
+  legend.innerHTML = visible.length
+    ? visible.map((e, i) => `<div><i class="dot d${(i % 4) + 1}"></i>${escapeHtml(e.label)} <b>${total ? (e.value / total * 100).toFixed(1) : '0.0'}%</b></div>`).join('')
+    : '<div class="muted">Keine positiven Positionen.</div>';
+  if (assetCount) assetCount.innerHTML = `${positions.length}<br><small>ASSETS</small>`;
 }
 
 function renderAccountMeta(data) {
@@ -117,9 +142,15 @@ function renderAccountMeta(data) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  const response = await fetch(`${API}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  if (!response.ok) {
+    const suffix = data.trading212Status ? ` (Trading 212 HTTP ${data.trading212Status})` : '';
+    throw new Error((data.error || `Request failed (${response.status})`) + suffix);
+  }
   return data;
 }
 
@@ -127,11 +158,14 @@ async function refreshDashboard(showMessage = false) {
   try {
     const data = await api('/dashboard');
     updateDashboard(data);
-    setConnection(true);
-    if (showMessage) showToast('Trading 212 Daten aktualisiert ✓');
+    setConnection(true, data.environment);
+    if (showMessage) showToast('Echte Trading-212-Daten aktualisiert ✓');
+    return data;
   } catch (error) {
     setConnection(false);
+    clearDashboard(error.message);
     if (showMessage) showToast(error.message, true);
+    return null;
   }
 }
 
@@ -147,7 +181,7 @@ function injectConnectionUI() {
   const modal = document.createElement('div');
   modal.id = 'connection-modal';
   modal.className = 'modal-backdrop';
-  modal.innerHTML = `<div class="connection-modal card"><button id="modal-close" class="modal-close">×</button><div class="muted">LIVE INTEGRATION</div><h2>Trading 212 verbinden</h2><p class="modal-copy">Deine API-Zugangsdaten werden nur an den lokalen Lumeceta-Server übertragen. Sie werden nicht ins GitHub-Repository geschrieben.</p><form id="connect-form"><label>Environment<select id="environment"><option value="live">Live · echtes Konto</option><option value="demo">Demo · Paper Trading</option></select></label><label>API Key<input id="api-key" autocomplete="off" required placeholder="Trading 212 API Key"></label><label>API Secret<input id="api-secret" type="password" autocomplete="new-password" required placeholder="Trading 212 API Secret"></label><div id="connect-error" class="connect-error"></div><button id="submit-connect" class="primary-btn modal-submit" type="submit">Verbinden & testen</button></form><div class="security-note">🔐 Secret bleibt im laufenden lokalen Backend und wird niemals im Frontend gespeichert.</div></div>`;
+  modal.innerHTML = `<div class="connection-modal card"><button id="modal-close" class="modal-close">×</button><div class="muted">LIVE INTEGRATION</div><h2>Trading 212 verbinden</h2><p class="modal-copy">Die Zugangsdaten werden nur an den lokalen Lumeceta-Server übertragen. Sie werden nicht ins GitHub-Repository geschrieben.</p><form id="connect-form"><label>Environment<select id="environment"><option value="live">Live · echtes Konto</option><option value="demo">Demo · Paper Trading</option></select></label><label>API Key<input id="api-key" autocomplete="off" required placeholder="Trading 212 API Key"></label><label>API Secret<input id="api-secret" type="password" autocomplete="new-password" required placeholder="Trading 212 API Secret"></label><div id="connect-error" class="connect-error"></div><button id="submit-connect" class="primary-btn modal-submit" type="submit">Verbinden & testen</button></form><div class="security-note">🔐 Secret bleibt im laufenden lokalen Backend und wird niemals im Frontend gespeichert.</div></div>`;
   document.body.appendChild(modal);
 
   const open = () => modal.classList.add('open');
@@ -163,11 +197,19 @@ function injectConnectionUI() {
     submit.disabled = true;
     submit.textContent = 'Verbinde…';
     try {
-      const data = await api('/connect', { method: 'POST', body: JSON.stringify({ apiKey: document.getElementById('api-key').value.trim(), apiSecret: document.getElementById('api-secret').value.trim(), environment: document.getElementById('environment').value }) });
-      await refreshDashboard(false);
-      setConnection(true);
+      const data = await api('/connect', {
+        method: 'POST',
+        body: JSON.stringify({
+          apiKey: document.getElementById('api-key').value.trim(),
+          apiSecret: document.getElementById('api-secret').value.trim(),
+          environment: document.getElementById('environment').value
+        })
+      });
+      const dashboard = await refreshDashboard(false);
+      if (!dashboard) throw new Error('Verbindung wurde bestätigt, aber Live-Daten konnten nicht geladen werden.');
+      setConnection(true, data.environment);
       close();
-      showToast('Trading 212 erfolgreich verbunden ✓');
+      showToast(`Trading 212 verbunden · ${data.positions} Positionen ✓`);
       document.getElementById('api-key').value = '';
       document.getElementById('api-secret').value = '';
     } catch (error) {
@@ -190,9 +232,15 @@ showView(location.hash.slice(1) || 'overview');
 (async () => {
   try {
     const status = await api('/status');
-    setConnection(status.connected);
+    setConnection(status.connected, status.environment);
     if (status.connected) await refreshDashboard(false);
+    else clearDashboard();
   } catch (_) {
     setConnection(false);
+    clearDashboard();
   }
 })();
+
+// Refreshing every 15 seconds keeps the dashboard live while staying comfortably
+// below Trading 212's account-summary rate limit.
+setInterval(() => refreshDashboard(false), 15_000);
