@@ -61,15 +61,26 @@ function number(value) {
 }
 
 function normalizePosition(p) {
+  const quantity = number(p.quantity);
+  const currentPrice = number(p.currentPrice);
+  const averagePrice = number(p.averagePrice);
+  const value = number(p.currentValue) || quantity * currentPrice;
+  const pnl = number(p.ppl);
+  const cost = averagePrice * quantity;
+  const pnlPercentage = number(p.pnlPercentage) || (cost ? (pnl / cost) * 100 : 0);
+
   return {
     ticker: p.ticker || 'UNKNOWN',
-    quantity: number(p.quantity),
-    averagePrice: number(p.averagePrice),
-    currentPrice: number(p.currentPrice),
-    value: number(p.currentValue),
-    ppl: number(p.ppl),
-    pplPercentage: number(p.pplPercentage),
-    fxResult: number(p.fxResult)
+    quantity,
+    averagePrice,
+    currentPrice,
+    value,
+    cost,
+    pnl,
+    pnlPercentage,
+    fxResult: number(p.fxResult),
+    pieQuantity: number(p.pieQuantity),
+    updatedAt: new Date().toISOString()
   };
 }
 
@@ -82,6 +93,10 @@ async function getDashboard() {
   const normalized = items.map(normalizePosition);
   const investmentValue = number(summary?.investments?.currentValue);
   const totalValue = number(summary?.totalValue);
+  const cash = number(summary?.cash?.availableToTrade);
+  const unrealizedPnl = number(summary?.investments?.unrealizedProfitLoss);
+  const realizedPnl = number(summary?.investments?.realizedProfitLoss);
+
   return {
     connected: true,
     environment: state.environment,
@@ -92,9 +107,10 @@ async function getDashboard() {
     summary: {
       portfolioValue: totalValue,
       invested: investmentValue,
-      cash: number(summary?.cash?.availableToTrade),
-      realizedPnl: number(summary?.investments?.realizedProfitLoss),
-      unrealizedPnl: number(summary?.investments?.unrealizedProfitLoss)
+      cash,
+      realizedPnl,
+      unrealizedPnl,
+      totalPnl: realizedPnl + unrealizedPnl
     },
     fetchedAt: new Date().toISOString()
   };
