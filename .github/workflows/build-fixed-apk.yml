@@ -1,0 +1,100 @@
+name: Build Fixed Lumeceta Sentinel APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install
+      - name: Prepare web bundle
+        run: |
+          rm -rf www
+          mkdir -p www
+          rsync -a ./ www/ --exclude 'www/' --exclude 'android/' --exclude 'node_modules/' --exclude 'server/' --exclude '.git/' --exclude '.github/' --exclude 'package.json' --exclude 'package-lock.json'
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Sync web assets
+        run: npx cap sync android
+      - name: Force exact Lumeceta launcher bitmap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          RES=android/app/src/main/res
+          rm -rf "$RES/mipmap-anydpi-v26" "$RES/mipmap-anydpi"
+          mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi"
+          for spec in "48 mipmap-mdpi" "72 mipmap-hdpi" "96 mipmap-xhdpi" "144 mipmap-xxhdpi" "192 mipmap-xxxhdpi"; do
+            set -- $spec
+            rsvg-convert -w "$1" -h "$1" assets/lumeceta-logo.svg -o "$RES/$2/ic_launcher.png"
+            cp "$RES/$2/ic_launcher.png" "$RES/$2/ic_launcher_round.png"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          s=re.sub(r'\s+android:icon="[^"]*"','',s)
+          s=re.sub(r'\s+android:roundIcon="[^"]*"','',s)
+          s=s.replace('<application ','<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ',1)
+          p.write_text(s)
+          PY
+      - name: Remove artificial Android top spacing
+        run: |
+          cat > /tmp/fix.css <<'EOF'
+          @media (max-width:700px){.android-webview .main{padding-top:0!important}.android-webview .topbar{margin-top:0!important;padding-top:10px!important}}
+          EOF
+          cat /tmp/fix.css >> android/app/src/main/assets/public/android-mobile-fix.css 2>/dev/null || true
+      - name: Configure Android system bars
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/res/values/colors.xml')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text('<?xml version="1.0" encoding="utf-8"?><resources><color name="lumeceta_status_bar">#09070F</color></resources>')
+          p=Path('android/app/src/main/res/values/styles.xml')
+          s=p.read_text()
+          if 'lumeceta_status_bar' not in s:
+              s=s.replace('</style>','<item name="android:statusBarColor">@color/lumeceta_status_bar</item><item name="android:navigationBarColor">@color/lumeceta_status_bar</item><item name="android:windowLightStatusBar">false</item><item name="android:windowLightNavigationBar">false</item></style>',1)
+              p.write_text(s)
+          PY
+      - name: Allow local HTTP backend
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          if 'android:usesCleartextTraffic="true"' not in s:
+              s=s.replace('<application ','<application android:usesCleartextTraffic="true" ',1)
+          p.write_text(s)
+          PY
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload fixed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumeceta-sentinel-fixed
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish fixed APK release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: fixed-${{ github.run_number }}
+          name: Lumeceta Sentinel Fixed ${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          generate_release_notes: false
