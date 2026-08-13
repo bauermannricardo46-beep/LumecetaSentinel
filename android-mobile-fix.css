@@ -1,0 +1,5 @@
+/* Android WebView fixes: remove the artificial top gap and keep content below the native status bar. */
+@media (max-width:700px){
+  .android-webview .main{padding-top:0!important}
+  .android-webview .topbar{margin-top:0!important;padding-top:10px!important}
+}
