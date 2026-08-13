@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="features.css" />
   <link rel="stylesheet" href="topbar-fix.css" />
+  <link rel="stylesheet" href="android-mobile-fix.css" />
   <link rel="stylesheet" href="ranking.css" />
   <link rel="stylesheet" href="asset-detail.css" />
   <link rel="stylesheet" href="entry-analysis.css" />
@@ -27,42 +28,21 @@
         <button class="nav-item" data-view="watchlist">◉ <span>Watchlist</span></button>
         <button class="nav-item" data-view="signals">⌁ <span>Signals</span></button>
       </nav>
-      <div class="sidebar-bottom">
-        <div class="connection"><span class="status-dot"></span><span id="connection-label">Not connected</span></div>
-        <div class="version">v0.5.1 · <span id="account-environment">Trading 212</span></div>
-      </div>
+      <div class="sidebar-bottom"><div class="connection"><span class="status-dot"></span><span id="connection-label">Not connected</span></div><div class="version">v0.5.1 · <span id="account-environment">Trading 212</span></div></div>
     </aside>
     <main class="main">
       <header class="topbar"><div><div class="eyebrow">INVESTMENT INTELLIGENCE</div><h1 id="page-title">Overview</h1></div><div class="top-actions"><span id="last-updated" class="muted update-label"></span><button id="refresh" class="icon-btn" title="Refresh">↻</button><div class="avatar">RS</div></div></header>
       <section id="view-overview" class="view active-view">
         <div class="hero-card card"><div><div class="muted">TOTAL PORTFOLIO VALUE</div><div class="hero-value" id="portfolio-value">—</div><div id="portfolio-change" class="muted">— <span>(connect Trading 212)</span></div></div><div class="hero-orbit"><span>◈</span></div></div>
-        <div class="metrics-grid">
-          <article class="card metric"><span class="muted">INVESTED</span><strong>—</strong><span class="muted">live account value</span></article>
-          <article class="card metric"><span class="muted">AVAILABLE CASH</span><strong>—</strong><span class="muted">cash available to trade</span></article>
-          <article class="card metric"><span class="muted">UNREALIZED P/L</span><strong>—</strong><span class="muted">live</span></article>
-          <article class="card metric"><span class="muted">RISK SCORE</span><strong id="risk-score">—</strong><span id="risk-label" class="risk-label">CALCULATION</span></article>
-        </div>
-        <div class="two-col">
-          <section class="card chart-card"><div class="section-head"><div><div class="muted">PERFORMANCE</div><h2>Portfolio history</h2></div><span class="pill">REAL HISTORY</span></div><div class="chart-wrap"><div class="empty-state">Reconstructing real history from Trading 212 fills and daily market closes…</div></div></section>
-          <section class="card"><div class="section-head"><div><div class="muted">ALLOCATION</div><h2>Holdings</h2></div></div><div class="allocation"><div class="donut"><span id="asset-count">0<br><small>ASSETS</small></span></div><div id="allocation-legend" class="legend"><div class="muted">Noch keine Live-Daten.</div></div></div></section>
-        </div>
+        <div class="metrics-grid"><article class="card metric"><span class="muted">INVESTED</span><strong>—</strong><span class="muted">live account value</span></article><article class="card metric"><span class="muted">AVAILABLE CASH</span><strong>—</strong><span class="muted">cash available to trade</span></article><article class="card metric"><span class="muted">UNREALIZED P/L</span><strong>—</strong><span class="muted">live</span></article><article class="card metric"><span class="muted">RISK SCORE</span><strong id="risk-score">—</strong><span id="risk-label" class="risk-label">CALCULATION</span></article></div>
+        <div class="two-col"><section class="card chart-card"><div class="section-head"><div><div class="muted">PERFORMANCE</div><h2>Portfolio history</h2></div><span class="pill">REAL HISTORY</span></div><div class="chart-wrap"><div class="empty-state">Reconstructing real history from Trading 212 fills and daily market closes…</div></div></section><section class="card"><div class="section-head"><div><div class="muted">ALLOCATION</div><h2>Holdings</h2></div></div><div class="allocation"><div class="donut"><span id="asset-count">0<br><small>ASSETS</small></span></div><div id="allocation-legend" class="legend"><div class="muted">Noch keine Live-Daten.</div></div></div></section></div>
         <section class="card"><div class="section-head"><div><div class="muted">SENTINEL</div><h2>Market signals</h2></div><button class="text-btn" data-view-target="signals">View all →</button></div><div class="signal-row"><div class="signal-icon neutral-bg">◈</div><div><strong>Sentinel Engine</strong><p>Berechnet Risiko und Momentum aus echten Portfolio-, Trading-212-History- und Marktpreisdaten.</p></div><span class="signal-score">LIVE</span></div></section>
       </section>
       <section id="view-portfolio" class="view"><section class="card"><div class="section-head"><div><div class="muted">LIVE POSITIONS</div><h2>Your portfolio</h2></div><span class="pill live">● LIVE</span></div><div class="table"><div class="table-head portfolio-head"><span>Asset</span><span>Value</span><span>P/L</span><span>Weight</span></div><div id="live-positions"><div class="empty-state">Trading 212 verbinden…</div></div></div></section><section class="card portfolio-detail-card"><div class="section-head"><div><div class="muted">PORTFOLIO INTELLIGENCE</div><h2>Risk & concentration</h2></div></div><div id="portfolio-factors" class="factor-grid"><div class="empty-state">Sentinel analysiert dein Portfolio…</div></div></section></section>
-      <section id="view-watchlist" class="view"></section>
-      <section id="view-signals" class="view"></section>
+      <section id="view-watchlist" class="view"></section><section id="view-signals" class="view"></section>
     </main>
   </div>
   <div id="toast" class="toast">Updated ✓</div>
-  <script src="mobile-api.js"></script>
-  <script src="app.js"></script>
-  <script src="mobile-nav.js"></script>
-  <script src="analytics-client.js"></script>
-  <script src="settings.js"></script>
-  <script src="features.js"></script>
-  <script src="engine-live.js"></script>
-  <script src="ranking.js"></script>
-  <script src="entry-analysis.js"></script>
-  <script src="asset-detail.js"></script>
+  <script src="mobile-api.js"></script><script src="app.js"></script><script src="mobile-nav.js"></script><script src="analytics-client.js"></script><script src="settings.js"></script><script src="features.js"></script><script src="engine-live.js"></script><script src="ranking.js"></script><script src="entry-analysis.js"></script><script src="asset-detail.js"></script>
 </body>
 </html>
