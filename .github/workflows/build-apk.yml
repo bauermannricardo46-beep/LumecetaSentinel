@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
@@ -53,31 +53,20 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq imagemagick librsvg2-bin
-
           RES="android/app/src/main/res"
           mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi"
-
-          # Remove Capacitor generated launcher/adaptive resources.
-          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher.xml
-          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_round.xml
-          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher_foreground.xml
-          rm -f "$RES"/mipmap-*/ic_launcher.png
-          rm -f "$RES"/mipmap-*/ic_launcher_round.png
-
-          # Render the supplied Lumeceta artwork for every launcher density.
+          rm -f "$RES"/mipmap-anydpi-v26/ic_launcher.xml "$RES"/mipmap-anydpi-v26/ic_launcher_round.xml "$RES"/mipmap-anydpi-v26/ic_launcher_foreground.xml
+          rm -f "$RES"/mipmap-*/ic_launcher.png "$RES"/mipmap-*/ic_launcher_round.png
           rsvg-convert -w 48  -h 48  assets/lumeceta-logo.svg -o "$RES/mipmap-mdpi/ic_launcher.png"
           rsvg-convert -w 72  -h 72  assets/lumeceta-logo.svg -o "$RES/mipmap-hdpi/ic_launcher.png"
           rsvg-convert -w 96  -h 96  assets/lumeceta-logo.svg -o "$RES/mipmap-xhdpi/ic_launcher.png"
           rsvg-convert -w 144 -h 144 assets/lumeceta-logo.svg -o "$RES/mipmap-xxhdpi/ic_launcher.png"
           rsvg-convert -w 192 -h 192 assets/lumeceta-logo.svg -o "$RES/mipmap-xxxhdpi/ic_launcher.png"
-
           cp "$RES/mipmap-mdpi/ic_launcher.png" "$RES/mipmap-mdpi/ic_launcher_round.png"
           cp "$RES/mipmap-hdpi/ic_launcher.png" "$RES/mipmap-hdpi/ic_launcher_round.png"
           cp "$RES/mipmap-xhdpi/ic_launcher.png" "$RES/mipmap-xhdpi/ic_launcher_round.png"
           cp "$RES/mipmap-xxhdpi/ic_launcher.png" "$RES/mipmap-xxhdpi/ic_launcher_round.png"
           cp "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/mipmap-xxxhdpi/ic_launcher_round.png"
-
-          # Patch the generated manifest without duplicating attributes.
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -87,6 +76,20 @@ jobs:
           s = re.sub(r'\s+android:icon="[^"]*"', '', s)
           s = s.replace('<application ', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ', 1)
           p.write_text(s)
+          PY
+
+      - name: Configure Android status bar
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/res/values/colors.xml')
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="lumeceta_status_bar">#09070F</color>\n</resources>\n''')
+          p = Path('android/app/src/main/res/values/styles.xml')
+          s = p.read_text()
+          if 'lumeceta_status_bar' not in s:
+              s = s.replace('</style>', '        <item name="android:statusBarColor">@color/lumeceta_status_bar</item>\n        <item name="android:navigationBarColor">@color/lumeceta_status_bar</item>\n        <item name="android:windowLightStatusBar">false</item>\n        <item name="android:windowLightNavigationBar">false</item>\n    </style>', 1)
+              p.write_text(s)
           PY
 
       - name: Allow local HTTP backend
@@ -112,7 +115,7 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APKs
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: lumeceta-sentinel-apks
@@ -120,3 +123,14 @@ jobs:
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
+
+      - name: Publish GitHub release for this build
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.5.${{ github.run_number }}
+          name: Lumeceta Sentinel v0.5.${{ github.run_number }}
+          generate_release_notes: true
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
