@@ -31,18 +31,15 @@ jobs:
         run: npx cap add android
       - name: Sync web assets
         run: npx cap sync android
-      - name: Force exact Lumeceta launcher bitmap
+      - name: Force exact Lumeceta launcher icon
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
           RES=android/app/src/main/res
+          mkdir -p "$RES/drawable-nodpi"
+          rm -f "$RES/drawable-nodpi/lumeceta_launcher.png"
+          rsvg-convert -w 1024 -h 1024 assets/lumeceta-logo.svg -o "$RES/drawable-nodpi/lumeceta_launcher.png"
           rm -rf "$RES/mipmap-anydpi-v26" "$RES/mipmap-anydpi"
-          mkdir -p "$RES/mipmap-mdpi" "$RES/mipmap-hdpi" "$RES/mipmap-xhdpi" "$RES/mipmap-xxhdpi" "$RES/mipmap-xxxhdpi"
-          for spec in "48 mipmap-mdpi" "72 mipmap-hdpi" "96 mipmap-xhdpi" "144 mipmap-xxhdpi" "192 mipmap-xxxhdpi"; do
-            set -- $spec
-            rsvg-convert -w "$1" -h "$1" assets/lumeceta-logo.svg -o "$RES/$2/ic_launcher.png"
-            cp "$RES/$2/ic_launcher.png" "$RES/$2/ic_launcher_round.png"
-          done
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -50,13 +47,16 @@ jobs:
           s=p.read_text()
           s=re.sub(r'\s+android:icon="[^"]*"','',s)
           s=re.sub(r'\s+android:roundIcon="[^"]*"','',s)
-          s=s.replace('<application ','<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" ',1)
+          s=s.replace('<application ','<application android:icon="@drawable/lumeceta_launcher" android:roundIcon="@drawable/lumeceta_launcher" ',1)
           p.write_text(s)
           PY
-      - name: Remove artificial Android top spacing
+      - name: Fix Android mobile viewport position
         run: |
           cat > /tmp/fix.css <<'EOF'
-          @media (max-width:700px){.android-webview .main{padding-top:0!important}.android-webview .topbar{margin-top:0!important;padding-top:10px!important}}
+          @media (max-width:700px){
+            .android-webview .main{padding-top:calc(56px + var(--safe-top))!important}
+            .android-webview .topbar{margin-top:0!important;padding-top:10px!important;padding-bottom:12px!important;position:relative!important;top:auto!important}
+          }
           EOF
           cat /tmp/fix.css >> android/app/src/main/assets/public/android-mobile-fix.css 2>/dev/null || true
       - name: Configure Android system bars
